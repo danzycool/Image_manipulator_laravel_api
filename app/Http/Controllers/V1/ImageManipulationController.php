@@ -3,10 +3,16 @@
 namespace App\Http\Controllers\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ResizeImageRequest;
+use App\Http\Resources\V1\ImageManipulationResource;
 use App\Models\Album;
 use App\Models\ImageManipulation;
-use App\Http\Requests\ResizeImageRequest;
-use GuzzleHttp\Psr7\UploadedFile;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Intervention\Image\Facades\Image;
 
 class ImageManipulationController extends Controller
 {
@@ -28,7 +34,7 @@ class ImageManipulationController extends Controller
     {
         $all = $request->all();
 
-        // @var UploadedFile/String $image
+        // @var UploadedFile | string $image
         $image = $all['image'];
         unset($all['image']);
         $data = [
@@ -44,7 +50,7 @@ class ImageManipulationController extends Controller
         }
 
         // Create an Image Directory
-        $dir = 'images'.Str::random().'/';
+        $dir = 'images/' . Str::random() . '/';
         $absolutePath = public_path($dir);
         File::makeDirectory($absolutePath);
 
@@ -60,6 +66,7 @@ class ImageManipulationController extends Controller
             $data['name'] = pathinfo($image, PATHINFO_BASENAME);
             $filename = pathinfo($image, PATHINFO_FILENAME);
             $extension = pathinfo($image, PATHINFO_EXTENSION);
+            $originalPath = $absolutePath . $data['name'];
 
             copy($image, $originalPath);
         }
@@ -70,10 +77,21 @@ class ImageManipulationController extends Controller
 
         list($width, $height) = $this->getImageWidthAndHeight($w, $h, $originalPath);
 
+        // list($width, $height, $image) = $this->getImageWidthAndHeight($w, $h, $originalPath);
+
         echo '<pre>';
-        var_dump($width, $height);
+        // var_dump($width, $height);
+        var_dump($all);
         echo '</pre>';
         exit;
+
+        // $resizedFilename = $filename . '-resized' . $extension;
+
+        // $image->resize($width, $height)->save($absolutePath . $resizedFilename);
+        // $data['output_path'] = $dir . $resizedFilename;
+
+        // $imageManipulation = ImageManipulation::create($data);
+        // return $imageManipulation;
     }
 
     /**
@@ -98,7 +116,7 @@ class ImageManipulationController extends Controller
         //
     }
 
-    protected function getImageWidthAndHeight($w, $h, string $originalPath) {
+    protected function getImageWidthAndHeight($w, $h, $originalPath) {
         // 1000px - 50% = 500px;
         $image = Image::make($originalPath);
         $originalWidth = $image->width();
@@ -120,7 +138,6 @@ class ImageManipulationController extends Controller
              * $newHeight = $originalHeight * $newWidth / $originalWidth
              */
             $newHeight = $h ? (float)$h : $originalHeight * $newWidth / $originalWidth;
-            
 
         }
 
