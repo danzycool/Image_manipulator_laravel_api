@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Album;
 use App\Http\Requests\ResizeImageRequest;
 use App\Http\Resources\V1\ImageManipulationResource;
-use App\Models\Album;
 use App\Models\ImageManipulation;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -23,11 +23,14 @@ class ImageManipulationController extends Controller
      */
     public function index()
     {
-        //
+        return ImageManipulationResource::collection(ImageManipulation::paginate());
     }
 
     public function byAlbum(Album $album) {
-
+        $where = [
+            'album_id' => $album->id,
+        ];
+        return ImageManipulationResource::collection(ImageManipulation::where($where)->paginate());
     }
 
     public function resize(ResizeImageRequest $request)
@@ -75,23 +78,16 @@ class ImageManipulationController extends Controller
         $w = $all['w'];
         $h = $all['h'] ?? false;
 
-        list($width, $height) = $this->getImageWidthAndHeight($w, $h, $originalPath);
+        list($width, $height, $image) = $this->getImageWidthAndHeight($w, $h, $originalPath);
 
-        // list($width, $height, $image) = $this->getImageWidthAndHeight($w, $h, $originalPath);
+        $resizedFilename = $filename . '-resized.' . $extension;
 
-        echo '<pre>';
-        // var_dump($width, $height);
-        var_dump($all);
-        echo '</pre>';
-        exit;
+        $image->resize($width, $height)->save($absolutePath . $resizedFilename);
+        $data['output_path'] = $dir . $resizedFilename;
 
-        // $resizedFilename = $filename . '-resized' . $extension;
+        $imageManipulation = ImageManipulation::create($data);
 
-        // $image->resize($width, $height)->save($absolutePath . $resizedFilename);
-        // $data['output_path'] = $dir . $resizedFilename;
-
-        // $imageManipulation = ImageManipulation::create($data);
-        // return $imageManipulation;
+        return new ImageManipulationResource($imageManipulation);
     }
 
     /**
@@ -100,9 +96,9 @@ class ImageManipulationController extends Controller
      * @param  \App\Models\ImageManipulation  $imageManipulation
      * @return \Illuminate\Http\Response
      */
-    public function show(ImageManipulation $imageManipulation)
+    public function show(ImageManipulation $image)
     {
-        //
+        return new ImageManipulationResource($image);
     }
 
     /**
@@ -111,9 +107,10 @@ class ImageManipulationController extends Controller
      * @param  \App\Models\ImageManipulation  $imageManipulation
      * @return \Illuminate\Http\Response
      */
-    public function destroy(ImageManipulation $imageManipulation)
+    public function destroy(ImageManipulation $image)
     {
-        //
+        $image->delete;
+        return response('Image Successfully Deleted', 204);
     }
 
     protected function getImageWidthAndHeight($w, $h, $originalPath) {
@@ -138,10 +135,9 @@ class ImageManipulationController extends Controller
              * $newHeight = $originalHeight * $newWidth / $originalWidth
              */
             $newHeight = $h ? (float)$h : $originalHeight * $newWidth / $originalWidth;
-
         }
 
-        return [$newWidth, $newHeight];
+        return [$newWidth, $newHeight, $image];
 
     }
 }

@@ -32,16 +32,11 @@ class ResizeImageRequest extends FormRequest
         ];
 
         $image = $this->all()['image'] ?? false;
-        if($image && $image instanceof UploadedFile) {
+        if(isset($all['image']) && $all['image'] instanceof UploadedFile) {
             $rules['image'][] = 'image';
         } else {
             $rules['image'][] = 'url';
         }
-
-        // echo '<pre>';
-        //     var_dump($rules);
-        // echo '</pre>';
-        exit;
 
         return $rules;
     }
